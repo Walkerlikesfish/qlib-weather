@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Yuri Here
 # Licensed under the MIT License.
 
 import abc
@@ -130,6 +130,7 @@ class YahooCollector(BaseCollector):
 
         interval = "1m" if interval in ["1m", "1min"] else interval
         try:
+            print("calling for network interface") # DEBUG
             _resp = Ticker(symbol, asynchronous=False).history(interval=interval, start=start, end=end)
             if isinstance(_resp, pd.DataFrame):
                 return _resp.reset_index()
@@ -259,111 +260,6 @@ class YahooCollectorCN1min(YahooCollectorCN):
         pass
 
 
-class YahooCollectorUS(YahooCollector, ABC):
-    def get_instrument_list(self):
-        logger.info("get US stock symbols......")
-        symbols = get_us_stock_symbols() + [
-            "^GSPC",
-            "^NDX",
-            "^DJI",
-        ]
-        logger.info(f"get {len(symbols)} symbols.")
-        return symbols
-
-    def download_index_data(self):
-        pass
-
-    def normalize_symbol(self, symbol):
-        return code_to_fname(symbol).upper()
-
-    @property
-    def _timezone(self):
-        return "America/New_York"
-
-
-class YahooCollectorUS1d(YahooCollectorUS):
-    pass
-
-
-class YahooCollectorUS1min(YahooCollectorUS):
-    pass
-
-
-class YahooCollectorIN(YahooCollector, ABC):
-    def get_instrument_list(self):
-        logger.info("get INDIA stock symbols......")
-        symbols = get_in_stock_symbols()
-        logger.info(f"get {len(symbols)} symbols.")
-        return symbols
-
-    def download_index_data(self):
-        pass
-
-    def normalize_symbol(self, symbol):
-        return code_to_fname(symbol).upper()
-
-    @property
-    def _timezone(self):
-        return "Asia/Kolkata"
-
-
-class YahooCollectorIN1d(YahooCollectorIN):
-    pass
-
-
-class YahooCollectorIN1min(YahooCollectorIN):
-    pass
-
-
-class YahooCollectorBR(YahooCollector, ABC):
-    def retry(cls):
-        """
-        The reason to use retry=2 is due to the fact that
-        Yahoo Finance unfortunately does not keep track of some
-        Brazilian stocks.
-
-        Therefore, the decorator deco_retry with retry argument
-        set to 5 will keep trying to get the stock data up to 5 times,
-        which makes the code to download Brazilians stocks very slow.
-
-        In future, this may change, but for now
-        I suggest to leave retry argument to 1 or 2 in
-        order to improve download speed.
-
-        To achieve this goal an abstract attribute (retry)
-        was added into YahooCollectorBR base class
-        """
-        raise NotImplementedError
-
-    def get_instrument_list(self):
-        logger.info("get BR stock symbols......")
-        symbols = get_br_stock_symbols() + [
-            "^BVSP",
-        ]
-        logger.info(f"get {len(symbols)} symbols.")
-        return symbols
-
-    def download_index_data(self):
-        pass
-
-    def normalize_symbol(self, symbol):
-        return code_to_fname(symbol).upper()
-
-    @property
-    def _timezone(self):
-        return "Brazil/East"
-
-
-class YahooCollectorBR1d(YahooCollectorBR):
-    retry = 2
-    pass
-
-
-class YahooCollectorBR1min(YahooCollectorBR):
-    retry = 2
-    pass
-
-
 class YahooNormalize(BaseNormalize):
     COLUMNS = ["open", "close", "high", "low", "volume"]
     DAILY_FORMAT = "%Y-%m-%d"
@@ -373,6 +269,7 @@ class YahooNormalize(BaseNormalize):
         df = df.copy()
         _tmp_series = df["close"].fillna(method="ffill")
         _tmp_shift_series = _tmp_series.shift(1)
+        import ipdb; ipdb.set_trace()
         if last_close is not None:
             _tmp_shift_series.iloc[0] = float(last_close)
         change_series = _tmp_series / _tmp_shift_series - 1
@@ -394,7 +291,7 @@ class YahooNormalize(BaseNormalize):
         df.set_index(date_field_name, inplace=True)
         df.index = pd.to_datetime(df.index)
         df = df[~df.index.duplicated(keep="first")]
-        if calendar_list is not None:
+        if calendar_list is not None: # Get the overlap date between calendar_list and loaded dataframe
             df = df.reindex(
                 pd.DataFrame(index=calendar_list)
                 .loc[
@@ -807,57 +704,6 @@ class YahooNormalize1minOffline(YahooNormalize1min):
         ]
 
 
-class YahooNormalizeUS:
-    def _get_calendar_list(self) -> Iterable[pd.Timestamp]:
-        # TODO: from MSN
-        return get_calendar_list("US_ALL")
-
-
-class YahooNormalizeUS1d(YahooNormalizeUS, YahooNormalize1d):
-    pass
-
-
-class YahooNormalizeUS1dExtend(YahooNormalizeUS, YahooNormalize1dExtend):
-    pass
-
-
-class YahooNormalizeUS1min(YahooNormalizeUS, YahooNormalize1minOffline):
-    CALC_PAUSED_NUM = False
-
-    def _get_calendar_list(self) -> Iterable[pd.Timestamp]:
-        # TODO: support 1min
-        raise ValueError("Does not support 1min")
-
-    def _get_1d_calendar_list(self):
-        return get_calendar_list("US_ALL")
-
-    def symbol_to_yahoo(self, symbol):
-        return fname_to_code(symbol)
-
-
-class YahooNormalizeIN:
-    def _get_calendar_list(self) -> Iterable[pd.Timestamp]:
-        return get_calendar_list("IN_ALL")
-
-
-class YahooNormalizeIN1d(YahooNormalizeIN, YahooNormalize1d):
-    pass
-
-
-class YahooNormalizeIN1min(YahooNormalizeIN, YahooNormalize1minOffline):
-    CALC_PAUSED_NUM = False
-
-    def _get_calendar_list(self) -> Iterable[pd.Timestamp]:
-        # TODO: support 1min
-        raise ValueError("Does not support 1min")
-
-    def _get_1d_calendar_list(self):
-        return get_calendar_list("IN_ALL")
-
-    def symbol_to_yahoo(self, symbol):
-        return fname_to_code(symbol)
-
-
 class YahooNormalizeCN:
     def _get_calendar_list(self) -> Iterable[pd.Timestamp]:
         # TODO: from MSN
@@ -888,29 +734,6 @@ class YahooNormalizeCN1min(YahooNormalizeCN, YahooNormalize1minOffline):
 
     def _get_1d_calendar_list(self) -> Iterable[pd.Timestamp]:
         return get_calendar_list("ALL")
-
-
-class YahooNormalizeBR:
-    def _get_calendar_list(self) -> Iterable[pd.Timestamp]:
-        return get_calendar_list("BR_ALL")
-
-
-class YahooNormalizeBR1d(YahooNormalizeBR, YahooNormalize1d):
-    pass
-
-
-class YahooNormalizeBR1min(YahooNormalizeBR, YahooNormalize1minOffline):
-    CALC_PAUSED_NUM = False
-
-    def _get_calendar_list(self) -> Iterable[pd.Timestamp]:
-        # TODO: support 1min
-        raise ValueError("Does not support 1min")
-
-    def _get_1d_calendar_list(self):
-        return get_calendar_list("BR_ALL")
-
-    def symbol_to_yahoo(self, symbol):
-        return fname_to_code(symbol)
 
 
 class Run(BaseRun):
@@ -989,7 +812,7 @@ class Run(BaseRun):
 
     def normalize_data(
         self,
-        date_field_name: str = "tradedate",
+        date_field_name: str = "date",
         symbol_field_name: str = "symbol",
         end_date: str = None,
         qlib_data_1d_dir: str = None,

@@ -428,6 +428,7 @@ class BaseRun(abc.ABC):
             $ python collector.py normalize_data --source_dir ~/.qlib/instrument_data/source --normalize_dir ~/.qlib/instrument_data/normalize --region CN --interval 1d
         """
         _class = getattr(self._cur_module, self.normalize_class_name)
+        print(_class)
         yc = Normalize(
             source_dir=self.source_dir,
             target_dir=self.normalize_dir,
